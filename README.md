@@ -59,8 +59,8 @@ Processed intermediate NetCDF files may be generated using the included scripts.
 
 ## Suggested workflow
 
-### 1. ARM_process_theta_e.py -- Process ARM thermodynamic and condensate variables into netCDF file
-### 2. cosmic_2_process_script.py -- Process COSMIC-2 radio occultation data into netCDF file
-### 3. imerg_match_to_COSMIC2.py -- Match IMERG precipitation measurements to COSMIC-2 ROs
-### 4. condensate_loss_mixing_ARMBE.ipynb -- Examples of running the BEAM model using ARMBE data and analysis
-### 5. condensate_loss_mixing_COSMIC2.ipynb -- Example of analysis of $\theta_e$ based analysis using COSMIC-2 matched with IMERG 
+### 1. 'ARM_process_theta_e.py' -- Process ARM thermodynamic and condensate variables into netCDF file
+### 2. 'cosmic_2_process_script.py' -- Process COSMIC-2 radio occultation data into netCDF file
+### 3. 'imerg_match_to_COSMIC2.py' -- Match IMERG precipitation measurements to COSMIC-2 ROs
+### 4. 'condensate_loss_mixing_ARMBE.ipynb' -- Examples of running the BEAM model using ARMBE data and analysis
+### 5. 'condensate_loss_mixing_COSMIC2.ipynb' -- Example of analysis of $\theta_e$ based analysis using COSMIC-2 matched with IMERG 
