@@ -294,7 +294,7 @@ def inv_T_s(s0, p, qt, T_guess=280, abs_tol=1e-5, max_iter=10000):
     return T, qv, ql, qi
 
 
-def comp_s(T,p,qv,ql,qi,rv = RV,rd=RD,cl=CL,ci=CI,Tr=T0):
+def comp_s(T,p,qv,ql,qi,rv = RV,rd=RD,cl=CL,ci=CI,Tr=T0, lf0 = LF0):
     """  Composite specfic entropy
     s = (1-qt)*sd + qt*sl + qv*(sv - sl)  - qi*(sl - si) + qv*(sv - ssv)
     from eqn 2.64 in Stevens & Siebesma (2020)
@@ -321,7 +321,7 @@ def comp_s(T,p,qv,ql,qi,rv = RV,rd=RD,cl=CL,ci=CI,Tr=T0):
     sd = cpd*np.log(T/Tr) - rd*np.log(p/p0*re/r)
     svsl = lv(T)/T
     svssv = rv*np.log(es/e)
-    slsi = (cl-ci)*np.log(T/T0) + lf(T)/T0
+    slsi = (cl-ci)*np.log(T/T0) + lf0/T0
     sl = cl*np.log(T/Tr)
     s = (1-qt)*sd + qt*sl + qv*svsl  - qi*slsi + qv*svssv
     return s
@@ -446,7 +446,7 @@ def beam_model_calc(T_init,p,qt,T_env,q_env,mix_coeff,gam=1,abs_tol = 1e-3,loss_
 
         #entropies
         sl = cl * np.log(Tp[a+1]/Tr)
-        slsi = (cl-ci)*np.log(Tp[a+1]/T0) + lf(Tp[a+1])/T0#Tp[a+1]
+        slsi = (cl-ci)*np.log(Tp[a+1]/T0) + LF0/T0#Tp[a+1]
         
         # s that is removed
         ds = sl*(dql+dqi) - slsi*dqi 
