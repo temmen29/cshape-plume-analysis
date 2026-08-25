@@ -1,8 +1,7 @@
 # import packages
 import os
 import numpy as np
-
-
+from tqdm import tqdm
 
 # constants
 
@@ -294,7 +293,7 @@ def inv_T_s(s0, p, qt, T_guess=280, abs_tol=1e-5, max_iter=10000):
     return T, qv, ql, qi
 
 
-def comp_s(T,p,qv,ql,qi,rv = RV,rd=RD,cl=CL,ci=CI,Tr=T0, lf0 = LF0):
+def comp_s(T,p,qv,ql,qi,rv = RV,rd=RD,cl=CL,ci=CI,Tr=T0,cpd=CPD):
     """  Composite specfic entropy
     s = (1-qt)*sd + qt*sl + qv*(sv - sl)  - qi*(sl - si) + qv*(sv - ssv)
     from eqn 2.64 in Stevens & Siebesma (2020)
@@ -321,13 +320,13 @@ def comp_s(T,p,qv,ql,qi,rv = RV,rd=RD,cl=CL,ci=CI,Tr=T0, lf0 = LF0):
     sd = cpd*np.log(T/Tr) - rd*np.log(p/p0*re/r)
     svsl = lv(T)/T
     svssv = rv*np.log(es/e)
-    slsi = (cl-ci)*np.log(T/T0) + lf0/T0
+    slsi = (cl-ci)*np.log(T/T0) + LF0/T0
     sl = cl*np.log(T/Tr)
     s = (1-qt)*sd + qt*sl + qv*svsl  - qi*slsi + qv*svssv
     return s
 
 
-def beam_model_calc(T_init,p,qt,T_env,q_env,mix_coeff,gam=1,abs_tol = 1e-3,loss_type = 'fractional',cap=0,beta = np.log(10e3)/(T0 - T_END)):
+def beam_model_calc(T_init,p,qt,T_env,q_env,mix_coeff,gam=1,abs_tol = 1e-3,loss_type = 'fractional',cap=0,beta = np.log(10e3)/(T0 - T_END),cl=CL,ci=CI,cpd=CPD):
     """Entraining plume calculation, assuming pressure decreasing with index.
     
     Input: 
@@ -356,6 +355,7 @@ def beam_model_calc(T_init,p,qt,T_env,q_env,mix_coeff,gam=1,abs_tol = 1e-3,loss_
     ql = np.zeros(p.shape)
     qi = np.zeros(p.shape)
     s = np.zeros(p.shape)
+    Tr = T0
     # env measures
     s_env = comp_s(T_env,p,q_env,0,0)
     # initialize quantities
