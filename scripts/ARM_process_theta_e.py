@@ -45,8 +45,10 @@ from beam_model import beam_model_calc,eval_es,eval_theta_e,eval_q,eval_qs
 
 
 
-
+# f_dir should point to ARMBE Data directory 
 f_dir = sorted(glob('/neelin2020/ARM/TWPC1/*.cdf'))+ sorted(glob('/neelin2020/ARM/TWPC2' + '/*.cdf'))
+
+# f_dir_lwc should point to ARM Mircobase directory
 f_lwc_dir = sorted(glob('/neelin2020/ARM/TWPC1/ice/*.nc'))+ sorted(glob('/neelin2020/ARM/TWPC2' + '/ice/*.nc'))
 site = 'Manus+ Nauru'
 lev = nc.Dataset(f_dir[0],'r').variables['p'][:]*100
@@ -285,6 +287,155 @@ theta_e[bad_inds] = np.ones((np.sum(bad_inds),len(lev)))*np.nan
 theta_es[bad_inds] = np.ones((np.sum(bad_inds),len(lev)))*np.nan
 q[bad_inds]= np.ones((np.sum(bad_inds),len(lev)))*np.nan
 qs_full[bad_inds]= np.ones((np.sum(bad_inds),len(lev)))*np.nan
+
+# ---------------------------------------------------------
+# SAVE PROCESSED ARM/ARMBE + MICROBASE VARIABLES TO NETCDF
+# ---------------------------------------------------------
+
+filepath_out = 'processed_ARMBE_manus_nauru_theta_e_and_condensate.nc'
+
+arm_out = nc.Dataset(filepath_out, "w", format="NETCDF4")
+
+# -------------------------
+# Dimensions
+# -------------------------
+n_time = len(time)
+n_lev = len(lev)
+n_cl_type = cl_type.shape[1] if np.ndim(cl_type) == 2 else 1
+
+arm_out.createDimension("time", n_time)
+arm_out.createDimension("lev", n_lev)
+arm_out.createDimension("cl_type_dim", n_cl_type)
+
+# -------------------------
+# Global metadata
+# -------------------------
+arm_out.title = "Processed ARMBE/MICROBASE thermodynamic and condensate variables"
+arm_out.description = (
+    "Processed ARM/ARMBE and MICROBASE variables used for entraining plume "
+    "and condensate-loss analysis."
+)
+arm_out.site = site
+arm_out.processing_notes = (
+    "Arrays are trimmed to t_count. Negative precipitation is set to zero. "
+    "Invalid thermodynamic values are set to NaN. Profiles with boundary-layer "
+    "theta_e below 300 K are masked."
+)
+
+# -------------------------
+# Coordinate variables
+# -------------------------
+time_var = arm_out.createVariable("time", np.float64, ("time",))
+time_var.long_name = "time"
+time_var.units = "seconds since 1970-01-01"
+
+# Convert datetime-like objects to numeric seconds since epoch.
+# If time is already numeric, this fallback preserves it.
+try:
+    time_numeric = nc.date2num(time, units=time_var.units, calendar="standard")
+except Exception:
+    time_numeric = time
+
+time_var[:] = time_numeric
+
+lev_var = arm_out.createVariable("lev", np.float32, ("lev",))
+lev_var.long_name = "pressure level"
+lev_var.units = "Pa"
+lev_var[:] = lev
+
+# -------------------------
+# Helper functions
+# -------------------------
+def write_1d(name, data, units="", long_name=""):
+    var = arm_out.createVariable(
+        name, np.float32, ("time",),
+        zlib=True, complevel=4
+    )
+    var.units = units
+    var.long_name = long_name if long_name else name
+    var[:] = to_nan(data).astype(np.float32)
+    return var
+
+
+def write_2d(name, data, units="", long_name=""):
+    var = arm_out.createVariable(
+        name, np.float32, ("time", "lev"),
+        zlib=True, complevel=4
+    )
+    var.units = units
+    var.long_name = long_name if long_name else name
+    var[:, :] = to_nan(data).astype(np.float32)
+    return var
+    
+def to_nan(data):
+    """Convert masked values to NaN and return a regular ndarray."""
+    if np.ma.isMaskedArray(data):
+        return np.ma.filled(data, np.nan)
+    return np.asarray(data)
+# -------------------------
+# 1D variables
+# -------------------------
+write_1d("theta_es_lft", theta_es_lft, "K", "lower-free-tropospheric saturation equivalent potential temperature")
+write_1d("theta_e_lft", theta_e_lft, "K", "lower-free-tropospheric equivalent potential temperature")
+write_1d("ta_lft", ta_lft, "K", "lower-free-tropospheric air temperature")
+
+write_1d("theta_e_bl", theta_e_bl, "K", "boundary-layer equivalent potential temperature")
+write_1d("q_bl", q_bl, "g kg-1", "boundary-layer specific humidity")
+write_1d("q_lft", q_lft, "g kg-1", "lower-free-tropospheric specific humidity")
+write_1d("qs_lft", qs_lft, "g kg-1", "lower-free-tropospheric saturation specific humidity")
+
+write_1d("pr", pr, "mm hr-1", "surface precipitation rate")
+# write_1d("cl_b", cl_b, "", "cloud base")
+# write_1d("cl_t", cl_t, "", "cloud top")
+
+bad_var = arm_out.createVariable("bad_inds", np.int8, ("time",))
+bad_var.long_name = "profile mask from boundary-layer theta_e quality control"
+bad_var.flag_values = "0, 1"
+bad_var.flag_meanings = "good bad"
+bad_var[:] = bad_inds.astype(np.int8)
+
+# cl_type is 2D in this script: (time, 8)
+# cl_type_var = arm_out.createVariable(
+#     "cl_type", np.float32, ("time", "cl_type_dim"), zlib=True, complevel=4, fill_value=np.nan
+# )
+# cl_type_var.long_name = "cloud type"
+# cl_type_var[:, :] = cl_type
+
+# -------------------------
+# 2D pressure-profile variables
+# -------------------------
+write_2d("rh_full", rh_full, "%", "relative humidity")
+write_2d("theta_e", theta_e, "K", "equivalent potential temperature")
+write_2d("theta_es", theta_es, "K", "saturation equivalent potential temperature")
+
+write_2d("lwc", lwc, "g m-3", "liquid water content")
+write_2d("lwc_mwrp", lwc_mwrp, "g m-3", "microwave-radiometer liquid water content")
+write_2d("ice", ice, "g m-3", "ice water content")
+
+write_2d("omega", omega, "Pa s-1", "pressure vertical velocity")
+write_2d("q", q, "g kg-1", "specific humidity")
+write_2d("qs_full", qs_full, "g kg-1", "saturation specific humidity")
+write_2d("ta_full", ta_full, "K", "air temperature")
+write_2d("es_full", es_full, "Pa", "saturation vapor pressure")
+
+write_2d("tv", tv, "K", "virtual temperature")
+write_2d("rho", rho, "g m-3", "air density")
+
+# NOTE: This follows your current script exactly. If lwc/ice are kg m-3,
+# then true g kg-1 requires multiplying lwc/rho and ice/rho by 1000.
+write_2d("lwc_gkg", lwc_gkg, "g kg-1", "liquid water mixing ratio")
+write_2d("iwc_gkg", iwc_gkg, "g kg-1", "ice water mixing ratio")
+write_2d("qc_env", qc_env, "g kg-1", "total environmental condensate mixing ratio")
+
+# -------------------------
+# Close file
+# -------------------------
+arm_out.close()
+
+print("Wrote:", filepath_out)
+
+
+
 
 
 
